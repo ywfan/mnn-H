@@ -1,6 +1,6 @@
 """
   code for MNN-H.
-  reference: 
+  reference:
   Y Fan, L Lin, L Ying, L Zepeda-Núnez, A multiscale neural network based on hierarchical matrices,
   arXiv preprint arXiv:1807.01883
 
@@ -69,6 +69,8 @@ best_err_test_max = 10
 # preparation for output
 data_path = 'data/'
 log_path = 'logs/'
+if not os.path.exists(log_path):
+  os.mkdir(log_path)
 outputfilename = log_path + 'tHL' + str(k_multigrid) + 'Nc' + str(N_cnn);
 #outputmodel = log_path + 'tHL' + str(k_multigrid) + 'Nc' + str(N_cnn);
 if(args.output_suffix == 'None'):
@@ -133,7 +135,7 @@ else:
 
 X_train = InputArray[0:n_train, :] #equal to 0:(n_train-1) in matlab
 Y_train = OutputArray[0:n_train, :]
-X_test  = InputArray[(Nsamples-n_test):Nsamples, :] 
+X_test  = InputArray[(Nsamples-n_test):Nsamples, :]
 Y_test  = OutputArray[(Nsamples-n_test):Nsamples, :]
 
 output("[n_input, n_output] = [%d, %d]" % (n_input, n_output))
