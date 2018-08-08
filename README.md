@@ -13,3 +13,10 @@ The neural network use _argparse_ to set the parameters. One can use
 	python testHmatrix.py --help  
 ```
 to print the usage of all the parameters and its default values.
+One example to run the code:
+```
+	python testHmatrix.py --epoch 200 --alpha 4 --output-suffix V1
+```
+
+
+The code for Kohn-Sham map is same as that for NLSE.
