@@ -1,6 +1,6 @@
 # Multiscale Neural Network (MNN) based on hierarchical matrices
 This repo is the code for the paper: https://arxiv.org/abs/1807.01883
-The generating code is written by MATLAB and the neural network is implemented by python based on keras on top of tensorflow
+The code to generate data is written by MATLAB and the neural network is implemented by python based on keras on top of tensorflow
 
 ## How to run
 - generate data by matlab code
@@ -19,4 +19,4 @@ One example to run the code:
 ```
 
 
-The code for Kohn-Sham map is same as that for NLSE.
+The code for Kohn-Sham map is same as that for NLSE, thus we only provide the code for NLSE.
