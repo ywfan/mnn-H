@@ -1,5 +1,5 @@
 """
-  code for MNN-H.
+  code for MNN-H 2d.
   reference:
   Y Fan, L Lin, L Ying, L Zepeda-Núnez, A multiscale neural network based on hierarchical matrices,
   arXiv preprint arXiv:1807.01883
@@ -9,15 +9,15 @@
 # ------------------ keras ----------------
 from keras.models import Model
 # layers
-from keras.layers import Input, Conv1D, LocallyConnected1D, Flatten, Lambda
-from keras.layers import Add, Reshape
+from keras.layers import Input, Conv2D
+from keras.layers import Add, Lambda
 
 from keras import backend as K
 from keras import regularizers, optimizers
 from keras.engine.topology import Layer
 from keras.constraints import non_neg
 from keras.utils import np_utils
-#from keras.utils import plot_model
+# from keras.utils import plot_model
 from keras.callbacks import LambdaCallback, ReduceLROnPlateau
 
 import os
@@ -25,19 +25,18 @@ import timeit
 import argparse
 import h5py
 import numpy as np
-import random
-import math
+import math, random
 
 K.set_floatx('float32')
 
-parser = argparse.ArgumentParser(description='NLSE - MNN-H')
+parser = argparse.ArgumentParser(description='NLSE - MNN-H 2d')
 parser.add_argument('--epoch', type=int, default=4000, metavar='N',
                     help='input number of epochs for training (default: %(default)s)')
-parser.add_argument('--input-prefix', type=str, default='nlse2v2', metavar='N',
+parser.add_argument('--input-prefix', type=str, default='nlse2d2', metavar='N',
                     help='prefix of input data filename (default: %(default)s)')
 parser.add_argument('--alpha', type=int, default=6, metavar='N',
                     help='number of channels for training (default: %(default)s)')
-parser.add_argument('--k-grid', type=int, default=7, metavar='N',
+parser.add_argument('--k-grid', type=int, default=5, metavar='N',
                     help='number of grids (L+1, N=2^L*m) (default: %(default)s)')
 parser.add_argument('--n-cnn', type=int, default=5, metavar='N',
                     help='number layer of CNNs (default: %(default)s)')
@@ -49,7 +48,7 @@ parser.add_argument('--verbose', type=int, default=2, metavar='N',
                     help='verbose (default: %(default)s)')
 parser.add_argument('--output-suffix', type=str, default='None', metavar='N',
                     help='suffix output filename(default: )')
-parser.add_argument('--percent', type=float, default=0.5, metavar='precent',
+parser.add_argument('--percent', type=float, default=2./3., metavar='precent',
                     help='percentage of number of total data(default: %(default)s)')
 args = parser.parse_args()
 # setup: parameters
@@ -59,6 +58,8 @@ k_multigrid = args.k_grid
 N_cnn = args.n_cnn
 lr = args.lr
 
+Nsamples = 30000
+
 best_err_train = 1e-2
 best_err_test = 1e-2
 best_err_T_train = 10
@@ -67,11 +68,11 @@ best_err_train_max = 10
 best_err_test_max = 10
 
 # preparation for output
-data_path = 'data/'
-log_path = 'logs/'
+data_path = 'data2d/'
+log_path = 'logs2d/'
 if not os.path.exists(log_path):
     os.mkdir(log_path)
-outputfilename = log_path + 'tHL' + str(k_multigrid) + 'Nc' + str(N_cnn)
+outputfilename = log_path + 't2dHL' + str(k_multigrid) + 'Nc' + str(N_cnn) + 'Al' + str(alpha);
 if(args.output_suffix == 'None'):
     outputfilename += str(os.getpid()) + '.txt'
 else:
@@ -88,75 +89,110 @@ def outputnewline():
 filenameIpt = data_path + 'Input_'  + args.input_prefix + '.h5'
 filenameOpt = data_path + 'Output_' + args.input_prefix + '.h5'
 
-# import data: size of data: Nsamples * Nx
+print('Reading data...')
 fInput = h5py.File(filenameIpt,'r')
-InputArray = fInput['Input'][:]
+InputArray = fInput['Input'][:,:,0:Nsamples]
 
 fOutput = h5py.File(filenameOpt,'r')
-OutputArray = fOutput['Output'][:]
+OutputArray = fOutput['Output'][:,:,0:Nsamples]
+print('Reading data finished')
 
-Nsamples = InputArray.shape[0]
+InputArray = np.transpose(InputArray, (2,1,0))
+OutputArray = np.transpose(OutputArray, (2,1,0))
+print(InputArray.shape)
+
+assert InputArray.shape[0] == Nsamples
 Nx = InputArray.shape[1]
+Ny = InputArray.shape[2]
 
 output(args)
 outputnewline()
 output('Input data filename     = %s' % filenameIpt)
 output('Output data filename    = %s' % filenameOpt)
-output("Nx                      = %d" % Nx)
+output("(Nx, Ny)                = (%d, %d)" % (Nx, Ny))
 output("Nsamples                = %d" % Nsamples)
 outputnewline()
 
 assert OutputArray.shape[0] == Nsamples
 assert OutputArray.shape[1] == Nx
+assert OutputArray.shape[2] == Ny
 
-n_input = Nx
-n_output = Nx
+n_input = (Nx, Ny)
+n_output = (Nx, Ny)
 
 # train data
 n_train = int(Nsamples * args.percent)
-n_train = min(n_train, 20000)
+n_train = min(n_train, 30000)
 n_test = Nsamples - n_train
-n_test = min(n_train, n_test)
-n_test = max(n_test, 5000)
-
+n_test = min(n_test, max(n_train, 5000))
 if args.batch_size == 0:
     BATCH_SIZE = n_train // 100
 else:
     BATCH_SIZE = args.batch_size
 
 # pre-treat the data
-mean_out = np.mean(OutputArray[0:n_train, :])
-mean_in  = np.mean(InputArray[0:n_train, :])
+mean_out = np.mean(OutputArray[0:n_train, :, :])
+mean_in  = np.mean(InputArray[0:n_train, :, :])
 output("mean of input / output is %.6f\t %.6f" % (mean_in, mean_out))
 InputArray /= mean_in * 2
 InputArray -= 0.5
 OutputArray -= mean_out
 
-X_train = InputArray[0:n_train, :] #equal to 0:(n_train-1) in matlab
-Y_train = OutputArray[0:n_train, :]
-X_test  = InputArray[(Nsamples-n_test):Nsamples, :]
-Y_test  = OutputArray[(Nsamples-n_test):Nsamples, :]
+X_train = InputArray[0:n_train, :, :]
+Y_train = OutputArray[0:n_train, :, :]
+X_test  = InputArray[n_train:(n_train+n_test), :, :]
+Y_test  = OutputArray[n_train:(n_train+n_test), :, :]
 
-output("[n_input, n_output] = [%d, %d]" % (n_input, n_output))
-output("[n_train, n_test] = [%d, %d]" % (n_train, n_test))
+output("[n_input, n_output] = [(%d,%d),  (%d,%d)]" % (n_input[0], n_input[1], n_output[0], n_output[1]))
+output("[n_train, n_test]   = [%d, %d]" % (n_train, n_test))
 
-X_train = np.reshape(X_train, [X_train.shape[0], X_train.shape[1], 1])
-X_test  = np.reshape(X_test,  [X_test.shape[0],  X_test.shape[1], 1])
+X_train = np.reshape(X_train, [X_train.shape[0], X_train.shape[1], X_train.shape[2], 1])
+X_test  = np.reshape(X_test,  [X_test.shape[0],  X_test.shape[1],  X_test.shape[2],  1])
 
 # parameters
-# Nx = 2^L *m, L = k_multigrid-1
 m = Nx // (2**(k_multigrid - 1))
 output('m = %d' % m)
 
 # functions
-def padding(x, size):
-    return K.concatenate([x[:,x.shape[1]-size//2:x.shape[1],:], x, x[:,0:(size-size//2-1),:]], axis=1)
+#channels last, i.e. x.shape = [batch_size, nx, ny, n_channels]
+def padding2d(x, size_x, size_y):
+    wx = size_x // 2
+    wy = size_y // 2
+    nx = x.shape[1]
+    ny = x.shape[2]
+    # x direction
+    y = K.concatenate([x[:,nx-wx:nx,:,:], x, x[:,0:wx,:,:]], axis=1)
+    # y direction
+    z = K.concatenate([y[:,:, ny-wy:ny,:], y, y[:,:,0:wy,:]], axis=2)
+    return z
+
+def matrix2tensor(x, w):
+    ns = x.shape[0]
+    nx = int(x.shape[1])
+    ny = int(x.shape[2])
+    nw = int(x.shape[3])
+    assert nw == 1
+    assert nx%w == 0
+    assert ny%w == 0
+    y = K.reshape(x, (-1, nx//w, w, nx//w, w))
+    z = K.permute_dimensions(y, (0,1,3,2,4))
+    return K.reshape(z, (-1, nx//w, ny//w, w**2))
+
+def tensor2matrix(x, w):
+    ns = x.shape[0]
+    nx = int(x.shape[1])
+    ny = int(x.shape[2])
+    w2 = int(x.shape[3])
+    assert w2 == w**2
+    y = K.reshape(x, (-1, nx, ny, w, w))
+    z = K.permute_dimensions(y, (0, 1, 3, 2, 4))
+    return K.reshape(z, (-1, nx*w, ny*w))
 
 # test
 def test_data(X, Y, string):
     Yhat = model.predict(X)
     dY = Yhat - Y
-    errs = np.linalg.norm(dY, axis=1) / np.linalg.norm(Y+mean_out, axis=1)
+    errs = np.linalg.norm(dY, axis=(1,2)) / np.linalg.norm(Y+mean_out, axis=(1,2))
     output("max/ave error of %s data:\t %.1e %.1e" % (string, np.amax(errs), np.mean(errs)))
     return errs
 
@@ -187,48 +223,43 @@ def outputvec(vec, string):
     for i in range(0, vec.shape[0]):
         os.write("%.6e\n" % vec[i])
 
-n_b_ad = 1 # see the paper arXiv:1807.01883
-n_b_2 = 2
-n_b_l = 3
-# u = \sum_{l=2}^L u_l + u_ad
-# u_l = U M V^T v
-Ipt = Input(shape=(n_input, 1))
-u_list = [] # list of u_l and u_ad
-for k in range(2, k_multigrid):
-    w = m * 2**(k_multigrid-k-1)
-    #restriction: we can add more layers
-    Vv = Conv1D(alpha, w, strides=w, activation='linear')(Ipt)
+Ipt = Input(shape=(n_input[0], n_input[1], 1))
+
+u_list = []
+for k in range(0, k_multigrid-2):
+    w = m * 2**(k_multigrid-k-3)
+    #restriction
+    Vv = Conv2D(alpha, (w,w), strides=(w,w), activation='linear')(Ipt)
     #kernel
     MVv = Vv
-    if(k==2):
+    if(k==0):
         for i in range(0,N_cnn):
-          MVv = Lambda(lambda x: padding(x, 2*n_b_2+1))(MVv)
-          MVv = Conv1D(alpha, 2*n_b_2+1, activation='relu')(MVv)
+          MVv = Lambda(lambda x: padding2d(x, 5, 5))(MVv)
+          MVv = Conv2D(alpha, (5,5), activation='relu')(MVv)
     else:
         for i in range(0,N_cnn):
-          MVv = Lambda(lambda x: padding(x, 2*n_b_l+1))(MVv)
-          MVv = Conv1D(alpha, 2*n_b_l+1, activation='relu')(MVv)
+          MVv = Lambda(lambda x: padding2d(x, 7, 7))(MVv)
+          MVv = Conv2D(alpha, (7,7), activation='relu')(MVv)
     #interpolation
-    u_l = Conv1D(w, 1, activation='linear')(MVv)
-    u_l = Flatten()(u_l)
+    u_l = Conv2D(w**2, (1,1), activation='linear')(MVv)
+    u_l = Lambda(lambda x: tensor2matrix(x, w))(u_l)
     u_list.append(u_l)
 
-# adjcent part
-u_ad = Reshape((n_input//m, m))(Ipt)
+# adjacent
+u_ad = Lambda(lambda x: matrix2tensor(x, w))(Ipt)
 for i in range(0, N_cnn-1):
-  u_ad = Lambda(lambda x: padding(x, 2*n_b_ad+1))(u_ad)
-  u_ad = Conv1D(m, 2*n_b_ad+1, activation='relu')(u_ad)
+    u_ad = Lambda(lambda x: padding2d(x, 3, 3))(u_ad)
+    u_ad = Conv2D(m**2, (3, 3), activation='relu')(u_ad)
 
-u_ad = Lambda(lambda x: padding(x, 2*n_b_ad+1))(u_ad)
-u_ad = Conv1D(m, 2*n_b_ad+1, activation='linear')(u_ad)
-u_ad = Flatten()(u_ad)
+u_ad = Lambda(lambda x: padding2d(x, 3, 3))(u_ad)
+u_ad = Conv2D(m**2, (3, 3), activation='linear')(u_ad)
+u_ad = Lambda(lambda x: tensor2matrix(x, m))(u_ad )
 u_list.append(u_ad)
 
 Opt = Add()(u_list)
 
 # model
 model = Model(inputs=Ipt, outputs=Opt)
-#plot_model(model, to_file='mnnH.png', show_shapes=True)
 model.compile(loss='mean_squared_error', optimizer='Nadam')
 model.optimizer.schedule_decay = (0.004)
 output('number of params      = %d' % model.count_params())
@@ -238,8 +269,8 @@ model.summary()
 start = timeit.default_timer()
 RelativeErrorCallback = LambdaCallback(
         on_epoch_end=lambda epoch, logs: checkresult(epoch, 10))
-#ReduceLR = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=10,
-#        verbose=1, mode='auto', cooldown=0, min_lr=1e-6)
+# ReduceLR = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=10,
+#         verbose=1, mode='auto', cooldown=0, min_lr=1e-6)
 model.optimizer.lr = (lr)
 model.fit(X_train, Y_train, batch_size=BATCH_SIZE, epochs=N_epochs, verbose=args.verbose,
         callbacks=[RelativeErrorCallback])
@@ -252,7 +283,7 @@ outputvec(err_test,  'Error for test data')
 
 os.close()
 
-log_os = open('trainresultH.txt', "a")
+log_os = open('trainresult2dH.txt', "a")
 log_os.write('%s\t%d\t%d\t%d\t' % (args.input_prefix, alpha, k_multigrid, N_cnn))
 log_os.write('%d\t%d\t%d\t%d\t' % (BATCH_SIZE, n_train, n_test, model.count_params()))
 log_os.write('%.3e\t%.3e\t' % (best_err_train, best_err_test))
