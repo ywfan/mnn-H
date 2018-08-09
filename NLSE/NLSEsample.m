@@ -1,11 +1,12 @@
 Nx = 320;
-Nsample = 4;
+Nsample = 10000;
 ng = 2; % number of gaussian
 
 h = 1 / Nx;
 x = (1:Nx)/Nx;
 
-matL = 2 * eye(Nx) - diag(linspace(1,1,Nx-1),1) - diag(linspace(1,1,Nx-1),-1);
+matL = 2 * eye(Nx) - diag(linspace(1,1,Nx-1),1) ...
+                   - diag(linspace(1,1,Nx-1),-1);
 matL(1,end) = -1;
 matL(end,1) = -1;
 matL = sparse(matL);
@@ -13,7 +14,7 @@ matL = matL / h^2;
 
 coea = zeros(Nsample, Nx);
 sols = zeros(Nsample, Nx);
-Es = zeros(Nsample, 1);
+Es   = zeros(Nsample, 1);
 
 sigma = 10;
 
@@ -45,7 +46,9 @@ parfor ns = 1:Nsample
 
     ca = zeros(size(x));
     for g = 1:ng
-        ca = ca -gaussian(rr(g), uu(g), T, x) - gaussian(rr(g), uu(g)+1, T, x) - gaussian(rr(g), uu(g)-1, T, x);
+        ca = ca - gaussian(rr(g), uu(g)  , T, x) ...
+                - gaussian(rr(g), uu(g)+1, T, x) ...
+                - gaussian(rr(g), uu(g)-1, T, x);
     end
     ca = ca - min(ca) + 1;
 
