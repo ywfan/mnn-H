@@ -5,11 +5,16 @@ import timeit
 
 
 def rel_error(model, X, Y, meanY =0):
+    """function to compute the relative error
+    model : trained neural network to compute the predicted data
+    X     : input data
+    Y     : reference output data
+    meanY : the mean of the of the untreated Y """
     Yhat = model.predict(X)
     dY = Yhat - Y
     axis = tuple(range(np.size(dY.shape))[1:])
     return  np.sqrt(np.sum(dY**2, axis = axis)/
-                     np.sum((Y+ meanY)**2, axis = axis))
+                     np.sum((Y+meanY)**2, axis = axis))
 
 
 class CheckRelError(Callback):
@@ -22,13 +27,14 @@ class CheckRelError(Callback):
         self.Y_test = Y_test
         self.verbose = verbose
         self.period = period
+        self.errorFun  = errorFun   # function to compute the error
         self.best_err_train     = 100
         self.best_err_test      = 100
         self.best_err_train_max = 100
         self.best_err_test_max  = 100
         self.best_err_train_ave = 100
         self.best_err_test_ave  = 100
-        self.errorFun  = errorFun
+
 
     def on_train_begin(self, logs=None):
         self.best_err_train     = 100
@@ -76,8 +82,12 @@ class CheckRelError(Callback):
                          self.best_err_test_ave, self.best_err_test_max))
 
         def on_train_end(self, logs=None):
-            print('best train and test error = %.1e, %.1e' % (self.best_err_train, self.best_err_test))
-            print('best train and test error ave/max = %.1e, %.1e, %.1e, %.1e' % (self.best_err_train_ave, self.best_err_train_max, self.best_err_test_ave, self.best_err_test_max))
+            print('best train and test error = %.1e, %.1e' % (self.best_err_train,
+                                                              self.best_err_test))
+            print('best train and test error ave/max = %.1e, %.1e, %.1e, %.1e' % (self.best_err_train_ave,
+                                                                                  self.best_err_train_max,
+                                                                                  self.best_err_test_ave,
+                                                                                  self.best_err_test_max))
 
 
 
