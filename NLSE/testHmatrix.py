@@ -16,9 +16,9 @@ from keras import backend as K
 from keras import regularizers, optimizers
 from keras.engine.topology import Layer
 from CheckRelError import CheckRelError, rel_error
-from utils import padding, initParser, rel_err_loss, preTreatDataNSLE
+from utils import padding, initParser, rel_err_loss, splitData, outputFunc
 #from keras.utils import plot_model
-from keras.callbacks import LambdaCallback, ReduceLROnPlateau
+from keras.callbacks import LambdaCallback
 
 import os
 import timeit
@@ -33,14 +33,14 @@ import math
 K.set_floatx('float32')
 # using a parser to obtain the argument
 # see utils.py for more details
-parser   = initParser()
+parser   = initParser('NLSE - MNN-H')
 args     = parser.parse_args()
 # setup: parameters
 N_epochs = args.epoch
 alpha    = args.alpha
 L        = args.L
 N_cnn    = args.n_cnn
-lr       = args.lr 
+lr       = args.lr
 sum_file = args.sum_file
 percent  = args.percent
 
@@ -56,20 +56,11 @@ if(args.output_suffix == 'None'):
 else:
     outputfilename += args.output_suffix + '.txt'
 
-# LZ: shall we change the name of the file?    
+# LZ: shall we change the name of the file?
 log = open(outputfilename, "w+")
 
-# drfining output functions
-def output(obj):
-    print(obj)
-    log.write(str(obj)+'\n')
-def outputnewline():
-    log.write('\n')
-    log.flush()
-def outputvec(vec, string):
-    log.write(string+'\n')
-    for i in range(0, vec.shape[0]):
-        log.write("%.6e\n" % vec[i])
+# defining output functions (see utils.py for more details)
+(output, outputnewline, outputvec) = outputFunc(log)
 
 ##################### Loading Data ########################
 
@@ -97,36 +88,51 @@ outputnewline()
 assert OutputArray.shape[0] == Nsamples
 assert OutputArray.shape[1] == Nx
 
-n_input  = Nx
-n_output = Nx
+(n_input,n_output)  = (Nx, Nx)
 
 # train data
 n_train = min(int(Nsamples * args.percent), 20000)
 n_test  = Nsamples - n_train
 n_test  = max(min(n_train, n_test), 5000)
- 
+
 #choosing the batch size
 if args.batch_size == 0:
     batch_size = n_train // 100
 else:
     batch_size = args.batch_size
 
-# pre-treating and splitting the data
-(X_train,Y_train,X_test,Y_test) = preTreatDataNSLE(InputArray, \
-                                                   OutputArray,\
-                                                   n_train,\
-                                                   n_test,\
-                                                   output)
+########## pre-treating and splitting the data #############
 
+Nsamples = InputArray.shape[0]
+# computing mean of the input and output data
+mean_out = np.mean(OutputArray[0:n_train, :])
+mean_in  = np.mean(InputArray[0:n_train, :])
+
+output("mean of input / output is %.6f\t %.6f" % (mean_in, mean_out))
+
+# treating the data
+InputArray /= mean_in * 2
+InputArray -= 0.5
+OutputArray -= mean_out
+
+(X_train,Y_train,X_test,Y_test) = splitData(InputArray,
+                                            OutputArray,
+                                            n_train,
+                                            n_test,
+                                            output)
 # parameters
 # Nx = 2^L *m, L = L-1
 m = Nx // (2**(L - 1))
 output('m = %d' % m)
 
+# defining the error as the relative error with respect to the
+# original data
+def error(model, X, Y): return  rel_error(model, X, Y,
+                                          meanY = mean_out)
+
 ##################### Building the Network ########################
-n_b_ad = 1 # see the paper arXiv:1807.01883
-n_b_2 = 2
-n_b_l = 3
+
+(n_b_ad, n_b_2, n_b_l)  = (1, 2, 3) # see the paper arXiv:1807.01883
 # u = \sum_{l=2}^L u_l + u_ad
 # u_l = U M V^T v
 Ipt = Input(shape=(n_input, 1))
@@ -175,18 +181,18 @@ model.summary()
 
 start = timeit.default_timer()
 checkrelerror= CheckRelError(X_train = X_train, Y_train = Y_train,
-                             X_test = X_test,   Y_test = Y_test,
-                             verbose = True,    period=10);
+                             X_test  = X_test,  Y_test  = Y_test,
+                             verbose = True,    period  = 10,
+                             errorFun = error)
 
-model.fit(X_train, Y_train, 
-          batch_size=batch_size, epochs=N_epochs, 
-          verbose=args.verbose,
-          callbacks=[checkrelerror])
+model.fit(X_train, Y_train,
+          batch_size = batch_size,   epochs    = N_epochs,
+          verbose    = args.verbose, callbacks = [checkrelerror])
 
-err_train = rel_error(model, X_train, Y_train)
-err_test  = rel_error(model, X_test, Y_test)
+err_train = error(model, X_train, Y_train)
+err_test  = error(model, X_test, Y_test)
 
-# I don't know if really necessary
+# I don't know if it is really necessary
 # outputvec(err_train, 'Error for train data')
 # outputvec(err_test,  'Error for test data')
 
