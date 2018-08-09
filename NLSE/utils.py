@@ -16,6 +16,20 @@ def padding(x, size):
 def rel_err_loss(y_true, y_pred):
     return K.sum(K.square(y_pred - y_true), axis=-1)/K.sum(K.square(y_true), axis=-1)
 
+# Output functions
+def outputFunc(log):
+	def output(obj):
+	    print(obj)
+	    log.write(str(obj)+'\n')
+	def outputnewline():
+	    log.write('\n')
+	    log.flush()
+	def outputvec(vec, string):
+	    log.write(string+'\n')
+	    for i in range(0, vec.shape[0]):
+	        log.write("%.6e\n" % vec[i])
+	return (output,outputnewline,outputvec)
+
 def initParser(descStr,
 			   trainResStr='trainresultH.txt'):
 	parser = argparse.ArgumentParser(description=descStr)

@@ -16,7 +16,7 @@ from keras import backend as K
 from keras import regularizers, optimizers
 from keras.engine.topology import Layer
 from CheckRelError import CheckRelError, rel_error
-from utils import padding, initParser, rel_err_loss, splitData
+from utils import padding, initParser, rel_err_loss, splitData, outputFunc
 #from keras.utils import plot_model
 from keras.callbacks import LambdaCallback
 
@@ -59,17 +59,8 @@ else:
 # LZ: shall we change the name of the file?
 log = open(outputfilename, "w+")
 
-# drfining output functions
-def output(obj):
-    print(obj)
-    log.write(str(obj)+'\n')
-def outputnewline():
-    log.write('\n')
-    log.flush()
-def outputvec(vec, string):
-    log.write(string+'\n')
-    for i in range(0, vec.shape[0]):
-        log.write("%.6e\n" % vec[i])
+# defining output functions (see utils.py for more details)
+(output, outputnewline, outputvec) = outputFunc(log)
 
 ##################### Loading Data ########################
 
@@ -97,8 +88,7 @@ outputnewline()
 assert OutputArray.shape[0] == Nsamples
 assert OutputArray.shape[1] == Nx
 
-n_input  = Nx
-n_output = Nx
+(n_input,n_output)  = (Nx, Nx)
 
 # train data
 n_train = min(int(Nsamples * args.percent), 20000)
@@ -135,6 +125,8 @@ OutputArray -= mean_out
 m = Nx // (2**(L - 1))
 output('m = %d' % m)
 
+# defining the error as the relative error with respect to the
+# original data
 def error(model, X, Y): return  rel_error(model, X, Y,
                                           meanY = mean_out)
 
