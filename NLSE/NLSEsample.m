@@ -67,6 +67,10 @@ end
 if exist(fileoutput, 'file') == 2
     delete(fileoutput);
 end
+% checking that the folder data\ exists
+if ~exist('data', 'dir')
+    mkdir('data')
+end
 h5create(fileinput,  '/Input', [Nx, Nsample]);
 h5write( fileinput,  '/Input', coea'); 
 h5create(fileoutput, '/Output', [Nx, Nsample]);
