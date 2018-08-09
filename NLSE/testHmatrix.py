@@ -131,9 +131,8 @@ def error(model, X, Y): return  rel_error(model, X, Y,
                                           meanY = mean_out)
 
 ##################### Building the Network ########################
-n_b_ad = 1 # see the paper arXiv:1807.01883
-n_b_2 = 2
-n_b_l = 3
+
+(n_b_ad, n_b_2, n_b_l)  = (1, 2, 3) # see the paper arXiv:1807.01883
 # u = \sum_{l=2}^L u_l + u_ad
 # u_l = U M V^T v
 Ipt = Input(shape=(n_input, 1))
@@ -193,7 +192,7 @@ model.fit(X_train, Y_train,
 err_train = error(model, X_train, Y_train)
 err_test  = error(model, X_test, Y_test)
 
-# I don't know if really necessary
+# I don't know if it is really necessary
 # outputvec(err_train, 'Error for train data')
 # outputvec(err_test,  'Error for test data')
 
