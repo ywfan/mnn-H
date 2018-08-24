@@ -83,13 +83,13 @@ for ns = 1:Nsample
     end
 end
 
-dir = 'data2d/'
-if ~exist(dir, 'dir')
-    mkdir(dir)
+path = 'data2d/';
+if ~exist(path, 'dir')
+    mkdir(path)
 end
 suffix = ['nlse2d', int2str(ng)];
-fileinput  = [dir, '/Input_',  suffix, '.h5'];
-fileoutput = [dir, '/Output_', suffix, '.h5'];
+fileinput  = [path, '/Input_',  suffix, '.h5'];
+fileoutput = [path, '/Output_', suffix, '.h5'];
 if exist(fileinput, 'file') == 2
     delete(fileinput);
 end
