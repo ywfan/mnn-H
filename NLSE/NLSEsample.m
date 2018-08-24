@@ -1,6 +1,9 @@
 Nx = 320;
-Nsample = 10000;
+Nsample = 4e4;
 ng = 2; % number of gaussian
+sigma = 10;
+min_r = 10;
+strength = 30;
 
 h = 1 / Nx;
 x = (1:Nx)/Nx;
@@ -16,14 +19,9 @@ coea = zeros(Nsample, Nx);
 sols = zeros(Nsample, Nx);
 Es   = zeros(Nsample, 1);
 
-sigma = 10;
-
 t = tic;
-ns = 1;
 ca = zeros(1,Nx);
 
-min_r = 10;
-strength = 30;
 parfor ns = 1:Nsample
     if(mod(ns, 1000) == 0)
         disp(ns);
@@ -61,18 +59,18 @@ parfor ns = 1:Nsample
     end
 end
 
+dir = 'data/'
+if ~exist(dir 'dir')
+    mkdir(dir)
+end
 suffix = ['nlse2v', int2str(ng)];
-fileinput  = ['data/Input_',  suffix, '.h5'];
-fileoutput = ['data/Output_', suffix, '.h5'];
+fileinput  = [dir, '/Input_',  suffix, '.h5'];
+fileoutput = [dir, '/Output_', suffix, '.h5'];
 if exist(fileinput, 'file') == 2
     delete(fileinput);
 end
 if exist(fileoutput, 'file') == 2
     delete(fileoutput);
-end
-% checking that the folder data\ exists
-if ~exist('data', 'dir')
-    mkdir('data')
 end
 h5create(fileinput,  '/Input', [Nx, Nsample]);
 h5write( fileinput,  '/Input', coea'); 
@@ -82,5 +80,5 @@ h5create(fileoutput, '/E', [1, Nsample]);
 h5write( fileoutput, '/E', Es');
 
 function res = gaussian(r, u, T, xx)
-res = r / sqrt(2*pi*T) * exp( -(xx-u).^2 / (2*T));
+    res = r / sqrt(2*pi*T) * exp( -(xx-u).^2 / (2*T));
 end

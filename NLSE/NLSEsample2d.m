@@ -1,6 +1,9 @@
 Nx = 80;
 Nsample = 4e4;
 ng = 2; % number of gaussian
+sigma = 10;
+min_r = 1;
+strength = 5;
 
 h = 1 / Nx;
 x = (1:Nx)/Nx;
@@ -26,13 +29,7 @@ coea = zeros(Nsample, Nx, Nx);
 sols = zeros(Nsample, Nx, Nx);
 Es = zeros(Nsample, 1);
 
-sigma = 10;
-
 t = tic;
-ns = 1;
-
-min_r = 1;
-strength = 5;
 for ns = 1:Nsample
     if(mod(ns, 100) == 0)
         disp(ns);
@@ -86,17 +83,18 @@ for ns = 1:Nsample
     end
 end
 
+dir = 'data2d/'
+if ~exist(dir, 'dir')
+    mkdir(dir)
+end
 suffix = ['nlse2d', int2str(ng)];
-fileinput  = ['data/Input_',  suffix, '.h5'];
-fileoutput = ['data/Output_', suffix, '.h5'];
+fileinput  = [dir, '/Input_',  suffix, '.h5'];
+fileoutput = [dir, '/Output_', suffix, '.h5'];
 if exist(fileinput, 'file') == 2
     delete(fileinput);
 end
 if exist(fileoutput, 'file') == 2
     delete(fileoutput);
-end
-if ~exist('data2d', 'dir')
-    mkdir('data2d')
 end
 h5create(fileinput,  '/Input', [Nsample, Nx, Nx]);
 h5write( fileinput,  '/Input', coea); 
@@ -106,12 +104,12 @@ h5create(fileoutput, '/E', [Nsample, 1]);
 h5write( fileoutput, '/E', Es);
 
 function res = gaussian(r, u1, u2, T, x1, x2)
-res = r / sqrt(2*pi*T) * exp( -((x1-u1).^2+(x2-u2).^2) / (2*T));
+    res = r / sqrt(2*pi*T) * exp( -((x1-u1).^2+(x2-u2).^2) / (2*T));
 end
 
 function res = mymod(i, n)
-res = mod(i,n);
-if res == 0
-    res = n;
-end
+    res = mod(i,n);
+    if res == 0
+        res = n;
+    end
 end

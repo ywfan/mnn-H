@@ -1,5 +1,8 @@
 function [E, u] = GLnlse(matL, V, sigma, dt, epsilon)
-%Gradient flow method for NLSE
+% Gradient flow method for NLSE
+% reference: W. Bao and Q. Du. Computing the ground state solution of Bose–Einstein condensates 
+%   by a normalized gradient flow. SIAM Journal on Scientific Computing, 25(5):1674–1697, 2004.
+%  written by Yuwei Fan (ywfan@stanford.edu)
 
 if nargin < 4
     dt = 1;
