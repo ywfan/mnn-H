@@ -19,12 +19,12 @@ from keras.layers import Add, Lambda
 from keras import optimizers
 # from keras.utils import plot_model
 
-from utils import initParser, outputFunc, period_padding2D, matrix2tensor, tensor2matrix
+from utils import init_parser, output_funs, period_padding_2d, matrix2tensor, tensor2matrix
 from utils import CheckRelError, rel_error
 
 # ===================== Setting Parameters ====================
-parser = initParser('NLSE - MNN-H 2d', input_prefix='nlse2d2', L=4,
-                    percent=2./3., trainResStr='trainresult2dH.txt')
+parser = init_parser('NLSE - MNN-H 2d', input_prefix='nlse2d2', L=4,
+                     percent=2./3., train_res='trainresult2dH.txt')
 args = parser.parse_args()
 
 # setup: parameters
@@ -48,7 +48,7 @@ else:
 
 log = open(output_filename, "w+")
 # defining output functions (see utils.py for more details)
-(output, outputnewline, outputvec) = outputFunc(log)
+(output, outputnewline, outputvec) = output_funs(log)
 
 # ==================== Loading Data ========================
 filenameIpt = data_path + 'Input_'  + args.input_prefix + '.h5'
@@ -128,7 +128,7 @@ for ll in range(2, L+1):
     MVv = Vv
     w_b = w_b_2 if ll == 2 else w_b_l
     for k in range(0, N_cnn):
-        MVv = Lambda(lambda x: period_padding2D(x, w_b[0], w_b[1]))(MVv)
+        MVv = Lambda(lambda x: period_padding_2d(x, w_b[0], w_b[1]))(MVv)
         MVv = Conv2D(alpha, w_b, activation='relu')(MVv)
 
     # interpolation
@@ -140,7 +140,7 @@ for ll in range(2, L+1):
 u_ad = Lambda(lambda x: matrix2tensor(x, w[0], w[1]))(Ipt)
 for k in range(0, N_cnn):
     act_fun = 'linear' if k == (N_cnn-1) else 'relu'
-    u_ad = Lambda(lambda x: period_padding2D(x, w_b_ad[0], w_b_ad[1]))(u_ad)
+    u_ad = Lambda(lambda x: period_padding_2d(x, w_b_ad[0], w_b_ad[1]))(u_ad)
     u_ad = Conv2D(m[0]*m[1], w_b_ad, activation=act_fun)(u_ad)
 
 u_ad = Lambda(lambda x: tensor2matrix(x, m[0], m[1]))(u_ad)
@@ -158,7 +158,7 @@ model.summary()
 
 checkrelerror = CheckRelError(X_train=X_train, Y_train=Y_train,
                               X_test=X_test, Y_test=Y_test,
-                              verbose=True, period=10, errorFun=error)
+                              verbose=True, period=10, error_fun=error)
 model.optimizer.lr = (args.lr)
 model.fit(X_train, Y_train, batch_size=BATCH_SIZE, epochs=args.epoch,
           verbose=args.verbose, callbacks=[checkrelerror])

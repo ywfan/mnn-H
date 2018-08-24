@@ -19,13 +19,13 @@ from keras.layers import Add, Reshape
 from keras import optimizers
 from keras.utils import plot_model
 
-from utils import period_padding1D, initParser, outputFunc
+from utils import period_padding_1d, init_parser, output_funs
 from utils import CheckRelError, rel_error
 
 # ===================== Setting Parameters ====================
 # using a parser to obtain the argument, see utils.py for more details
-parser = initParser('NLSE - MNN-H', input_prefix='nlse2v2', L=6,
-                    percent=0.5, trainResStr='trainresultH.txt')
+parser = init_parser('NLSE - MNN-H', input_prefix='nlse2v2', L=6,
+                     percent=0.5, train_res='trainresultH.txt')
 args = parser.parse_args()
 
 # setup: parameters
@@ -47,7 +47,7 @@ else:
 
 log = open(output_filename, "w+")
 # defining output functions (see utils.py for more details)
-(output, outputnewline, outputvec) = outputFunc(log)
+(output, outputnewline, outputvec) = output_funs(log)
 
 # ==================== Loading Data ========================
 filenameIpt = data_path + 'Input_'  + args.input_prefix + '.h5'
@@ -123,7 +123,7 @@ for ll in range(2, L+1):
     MVv = Vv
     n_b = n_b_2 if ll == 2 else n_b_l
     for k in range(0, N_cnn):
-        MVv = Lambda(lambda x: period_padding1D(x, 2*n_b+1))(MVv)
+        MVv = Lambda(lambda x: period_padding_1d(x, 2*n_b+1))(MVv)
         MVv = Conv1D(alpha, 2*n_b+1, activation='relu')(MVv)
 
     # interpolation
@@ -135,7 +135,7 @@ for ll in range(2, L+1):
 u_ad = Reshape((n_input//m, m))(Ipt)
 for k in range(0, N_cnn):
     act_fun = 'linear' if k == (N_cnn-1) else 'relu'
-    u_ad = Lambda(lambda x: period_padding1D(x, 2*n_b_ad+1))(u_ad)
+    u_ad = Lambda(lambda x: period_padding_1d(x, 2*n_b_ad+1))(u_ad)
     u_ad = Conv1D(m, 2*n_b_ad+1, activation=act_fun)(u_ad)
 
 u_ad = Flatten()(u_ad)
@@ -159,7 +159,7 @@ model.summary()
 
 checkrelerror = CheckRelError(X_train=X_train, Y_train=Y_train,
                               X_test=X_test, Y_test=Y_test,
-                              verbose=True, period=10, errorFun=error)
+                              verbose=True, period=10, error_fun=error)
 model.fit(X_train, Y_train, batch_size=BATCH_SIZE, epochs=args.epoch,
           verbose=args.verbose, callbacks=[checkrelerror])
 

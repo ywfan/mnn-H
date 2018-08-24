@@ -12,7 +12,7 @@ from keras import backend as K
 from keras.callbacks import Callback
 
 # functions
-def period_padding1D(x, size):
+def period_padding_1d(x, size):
     """period padding for 3-tensor with shape: (batch_size, Nx, features)
 
     # Argument
@@ -24,7 +24,7 @@ def period_padding1D(x, size):
 
 
 # channels last, i.e. x.shape = [batch_size, nx, ny, n_channels]
-def period_padding2D(x, size_x, size_y):
+def period_padding_2d(x, size_x, size_y):
     """period padding for 4-tensor with shape: (batch_size, Nx, Ny, features)
 
     # Argument
@@ -81,7 +81,7 @@ def tensor2matrix(x, wx, wy):
     return K.reshape(z, (-1, nx*wx, ny*wy))
 
 
-def outputFunc(log):
+def output_funs(log):
     """define the output """
     def output(obj):
         print(obj)
@@ -99,10 +99,10 @@ def outputFunc(log):
     return (output, outputnewline, outputvec)
 
 
-def initParser(descStr, epoch=4000, input_prefix='nlse2v2', alpha=6, L=6,
-               n_cnn=5, lr=0.001, batch_size=None,
-               verbose=2, output_suffix=None, percent=0.5,
-               trainResStr='trainresultH.txt'):
+def init_parser(descStr, epoch=4000, input_prefix='nlse2v2', alpha=6, L=6,
+                n_cnn=5, lr=0.001, batch_size=None,
+                verbose=2, output_suffix=None, percent=0.5,
+                train_res='trainresultH.txt'):
     """set the input parameters"""
     parser = argparse.ArgumentParser(description=descStr)
     parser.add_argument('--epoch', type=int, default=epoch, metavar='N',
@@ -125,7 +125,7 @@ def initParser(descStr, epoch=4000, input_prefix='nlse2v2', alpha=6, L=6,
                         help='suffix output filename(default: )')
     parser.add_argument('--percent', type=float, default=percent, metavar='precent',
                         help='percentage of number of total data(default: %(default)s)')
-    parser.add_argument('--sum-file', type=str, default=trainResStr, metavar='N',
+    parser.add_argument('--sum-file', type=str, default=train_res, metavar='N',
                         help='file to summarize the error of the training (default: %(default)s)')
     return parser
 
